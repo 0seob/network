@@ -18,14 +18,22 @@ void error(char *msg)
 
 int type_select(char *buffer, char *accept_mes, int newsockfd){
   char *request_mes = strtok(buffer, "/");
+  char *file_name;
+  char *file_type;
   request_mes = strtok(NULL, " ");
   char *full_name = malloc(sizeof(request_mes));
   strcpy(full_name, request_mes);
-  char *file_name = strtok(request_mes, ".");
-  char *file_type = strtok(NULL, " ");
-  printf("%s\n",full_name);
-  printf("%s\n",file_name);
-  printf("%s\n",file_type);
+  if(strchr(full_name, '.') != NULL){
+    char *file_name = strtok(request_mes, ".");
+    char *file_type = strtok(NULL, " ");
+    printf("%s\n",full_name);
+    printf("%s\n",file_name);
+    printf("%s\n",file_type);
+  }
+  else {
+    printf("%s\n",full_name);
+    return 0;
+  }
 
   if(!(strcmp(file_type, "html"))){
 
@@ -104,7 +112,7 @@ int type_select(char *buffer, char *accept_mes, int newsockfd){
       return 0;
     }
   }
-  
+
   else if(!(strcmp(file_type, "pdf"))){
 
     accept_mes = strcat(accept_mes, "application/pdf\n\n");
@@ -135,7 +143,37 @@ int type_select(char *buffer, char *accept_mes, int newsockfd){
       return 0;
     }
   }
+  else if(!(strcmp(file_type, "mp3"))){
 
+    accept_mes = strcat(accept_mes, "audio/mpeg\n\n");
+    FILE *file = fopen(full_name, "rb");
+
+    if(file){
+      fseek(file, 0, SEEK_END);
+      int filelen = ftell(file);
+      fseek(file, 0, SEEK_SET);
+
+      char *tempbuf = (char *)malloc(strlen(accept_mes) + filelen);
+      if (!tempbuf){
+        fprintf(stderr, "Memory error!");
+        fclose(file);
+        return 0;
+      }
+
+      strcat(tempbuf, accept_mes);
+      char *mp3buf = (char *)malloc(filelen + 1);
+      int fileread = fread(mp3buf, filelen, 1, file);
+      if(fileread > 0) memcpy(tempbuf+strlen(accept_mes), mp3buf, filelen);
+
+      fclose(file);
+      int n = write(newsockfd, tempbuf, strlen(accept_mes)+filelen);
+      return 2;
+    }
+    else{
+      return 0;
+    }
+  }
+/*
   else if(!(strcmp(file_type, "mp3"))){
     accept_mes = strcat(accept_mes, "audio/mpeg\n\n");
     FILE *file = fopen(full_name, "rb");
@@ -144,7 +182,7 @@ int type_select(char *buffer, char *accept_mes, int newsockfd){
       int filelen = ftell(file);
       fseek(file, 0, SEEK_SET);
       char *tempbuf = (char *)malloc(strlen(accept_mes) + filelen);
-      if (!tempbuf){
+      if(!tempbuf){
         fprintf(stderr, "Memory error!");
         fclose(file);
         return 0;
@@ -164,19 +202,22 @@ int type_select(char *buffer, char *accept_mes, int newsockfd){
       return 0;
     }
   }
+*/
+  else if(!(strcmp(file_type, "ico"))){
+    return 3;
+  }
+
   else{
-    accept_mes = strcat(accept_mes, "text/html\n\n");
+    /*accept_mes = strcat(accept_mes, "text/html\n\n");
     char tempbuf[1024]; bzero(tempbuf, 1024);
     FILE *file = fopen("NotFound", "r");
     if(file){
       while(fgets(tempbuf, sizeof(tempbuf), file) != NULL){
         strcat(accept_mes, tempbuf);
       }
-      fclose(file);
+      fclose(file);*/
       return 0;
-    }
   }
-  return 0;
 }
 
 int main(int argc, char *argv[])
@@ -239,6 +280,9 @@ int main(int argc, char *argv[])
        }
        else if(type_num == 2){
          printf("%s\n\n", accept_mes);
+       }
+       else if(type_num == 3){
+         continue;
        }
        else{
          printf("%s\n\n", notFound);
